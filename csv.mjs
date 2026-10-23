@@ -1,0 +1,2 @@
+export function csvCell(value){let s=String(value??'');if(/^[\s]*[=+\-@]|^[\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}
+export function csv(state){const d=state.data,header=['Fuente','Restaurante','Tarjeta','Canal','Fecha UTC','Dispositivo'],rows=d.analytics.events.map(e=>['FICTICIO LOCAL',d.businesses.find(b=>b.id===e.tenant)?.name??e.tenant,d.analytics.cards.find(c=>c.id===e.cardId)?.name??e.cardId,e.channel,e.at,e.device??'']);return '\ufeff'+[header,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');}

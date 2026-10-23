@@ -1,0 +1,28 @@
+import {esc,icon,empty,field} from './components.mjs';
+import {csv} from './csv.mjs';
+let context;
+export function configureLaunch(value){context=value;}
+const action=(label,id,more='')=>'<button class="button secondary tap" data-action="'+id+'" '+more+'>'+label+'</button>';
+export function businessComparison(state){const rows=state.data.businessMetrics??[];return '<section class="panel business-comparison"><div class="panel-heading"><h2>Comparación por restaurante</h2><span class="subtle">Período '+esc(state.period)+' días</span></div>'+rows.map(b=>'<div class="list-row"><div><strong>'+esc(b.name)+'</strong></div><div><span class="nfc-value">'+b.NFC+' NFC</span> · <span class="qr-value">'+b.QR+' QR</span><p class="subtle">'+b.total+' interacciones</p></div></div>').join('')+(rows.length?'':empty('Sin negocios'))+'</section>';}
+export function extraContent(view,state){
+ if(view==='search')return '<section class="panel"><label for="universal-search">Buscar negocios, personas, tarjetas y solicitudes autorizadas</label><input id="universal-search" type="search" maxlength="120" placeholder="Nombre o identificador" autocomplete="off"><div id="search-results" role="status" aria-live="polite"></div></section>';
+ const a=state.data.analytics;return '<section class="panel"><h2>Informe del laboratorio</h2><p>Exportación de la fuente sintética canónica del período y restaurante seleccionados. NFC y QR se mantienen separados. No contiene credenciales.</p><div class="review-values"><div><strong>'+a.selected.NFC+'</strong><small class="nfc-value">NFC</small></div><div><strong>'+a.selected.QR+'</strong><small class="qr-value">QR</small></div></div><p>'+a.events.length+' registros ficticios · '+esc(a.zone)+'</p>'+action('Descargar CSV ficticio','export-csv')+'</section>';
+}
+export function enhanceAdmin(app,state){
+ if(state.data.profile.role!=='admin')return;
+ const toolbar=app.querySelector('.topbar .toolbar');if(toolbar&&!toolbar.querySelector('[data-view=search]')){const button=document.createElement('button');button.type='button';button.className='icon-button tap';button.dataset.view='search';button.setAttribute('aria-label','Buscar');button.textContent='⌕';toolbar.prepend(button);}
+ if(state.view==='settings'){const tools=document.createElement('section');tools.className='panel';tools.innerHTML='<h2>Operación del servicio</h2><div class="action-row">'+[['users','Usuarios y membresías'],['commercial','Planes y servicios'],['activity','Monitor de actividad'],['security','Auditoría'],['reports','Informes'],['notifications','Notificaciones']].map(([id,label])=>'<button class="button tap" data-view="'+id+'">'+label+'</button>').join('')+'</div>';app.querySelector('#main').append(tools);}
+ app.querySelectorAll('[data-action=rename-device]').forEach(button=>{const card=state.data.analytics.cards.find(c=>c.id===button.dataset.id);if(card&&['active','inactive'].includes(card.state)){const revoke=document.createElement('button');revoke.className='button danger tap';revoke.dataset.action='retire-local';revoke.dataset.id=card.id;revoke.textContent='Revocar registro local';button.after(revoke);}});
+ const input=app.querySelector('#universal-search');if(input){const search=()=>{
+  const q=input.value.trim().toLocaleLowerCase('es');const groups=[['Negocio','businesses',state.data.businesses.map(b=>({id:b.id,label:b.name}))],['Persona','users',state.data.users.map(u=>({id:u.id,label:u.displayName+' · '+u.email}))],['Dispositivo','devices',state.data.analytics.cards.map(c=>({id:c.id,label:c.name+' · '+c.channel}))],['Solicitud','requests',[...state.data.requests,...state.data.orders].map(r=>({id:r.id,label:r.reason+' · '+r.state}))]];
+  const rows=groups.flatMap(([kind,view,items])=>items.filter(i=>q&&(i.label+' '+i.id).toLocaleLowerCase('es').includes(q)).map(i=>({kind,view,...i}))).slice(0,50);app.querySelector('#search-results').innerHTML=rows.map(r=>'<button class="search-result button full tap" data-view="'+r.view+'"><strong>'+esc(r.label)+'</strong><small>'+esc(r.kind)+' · '+esc(r.id)+'</small></button>').join('')||'<p class="subtle">'+(q?'Sin resultados en la selección autorizada.':'Escribí para consultar los datos locales disponibles.')+'</p>';
+ };input.addEventListener('input',search);search();}
+}
+export async function handleExtra(name,element){
+ if(name==='export-csv'){const blob=new Blob([csv(context.getState())],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='nq-informe-ficticio.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);context.toast('CSV de datos ficticios descargado.');return true;}
+ if(name!=='retire-local')return false;
+ const id=element.dataset.id;context.showDialog('Revocar registro ficticio',field('reason','Motivo','','text','required minlength="3" maxlength="500"'),async f=>{
+  const confirmation=await context.api('./api/action',{method:'POST',body:{op:'retire-prepare',id,reason:f.reason}});
+  return ()=>context.showDialog('Confirmar revocación local','<div class="notice">Estado terminal del registro ficticio. No revoca credenciales reales ni altera lectores.</div><label><input type="checkbox" required>Confirmo el dispositivo y el efecto local.</label>',async(_,key)=>context.api('./api/action',{method:'POST',body:{op:'retire-execute',id,version:confirmation.version,confirmation:confirmation.confirmation,key}}),{label:'Revocar en laboratorio',description:'Confirmación independiente, con auditoría y sin conexiones remotas.'});
+ },{label:'Preparar confirmación',description:'Solo administrador; no es una solicitud del restaurante.'});return true;
+}

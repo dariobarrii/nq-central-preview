@@ -1,0 +1,22 @@
+export const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const paths={home:'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',chart:'M4 20V10m8 10V4m8 16v-7',card:'M3 6h18v13H3Zm0 4h18',settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3M3 12h3m12 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2',business:'M3 21V7l9-4 9 4v14M7 9h2m6 0h2M7 13h2m6 0h2M10 21v-5h4v5',refresh:'M20 7v5h-5M4 17v-5h5M19 12a7 7 0 0 0-12-5M5 12a7 7 0 0 0 12 5',arrow:'M7 17 17 7M7 7h10v10',bell:'M6 16V9a6 6 0 0 1 12 0v7l2 2H4Zm4 5h4',users:'M16 21v-3a4 4 0 0 0-8 0v3M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M20 21v-3',logout:'M9 4H4v16h5M13 8l5 4-5 4m-5-4h10',qr:'M3 3h6v6H3Zm12 0h6v6h-6ZM3 15h6v6H3Zm12 0h3v3h3v3h-6Z',nfc:'M8 8a6 6 0 0 1 0 8m4-12a11 11 0 0 1 0 16M4 11v2',star:'m12 3 3 6 6 1-4.5 5 1 6L12 18l-5.5 3 1-6L3 10l6-1Z',check:'m5 12 4 4L19 6',clock:'M12 8v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18',plus:'M12 5v14M5 12h14'};
+export const icon=name=>`<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]??paths.card}"./></svg>`;
+let stateContract={};
+export const configureStates=contract=>{stateContract=contract??{};};
+export function badge(state,kind='request'){
+ const description=stateContract[kind]?.[state]??{label:state,color:'neutral'};
+ return `<span class="badge ${esc(description.color)}"><i></i>${esc(description.label)}</span>`;
+}
+export const empty=(title='Todavía no hay actividad',body='Cuando haya información disponible, aparecerá aquí.')=>`<div class="empty">${icon('clock')}<h3>${esc(title)}</h3><p>${esc(body)}</p></div>`;
+export const field=(name,label,value='',type='text',extra='')=>`<label>${esc(label)}<input name="${esc(name)}" type="${type}" value="${esc(value)}" ${extra}></label>`;
+export const select=(name,label,options,value)=>`<label>${esc(label)}<select name="${esc(name)}" aria-label="${esc(label)}">${options.map(([id,text])=>`<option value="${esc(id)}" ${id===value?'selected':''}>${esc(text)}</option>`).join('')}</select></label>`;
+export function metric(label,value,kind,comparison,key){return `<button type="button" class="metric float-surface tap" data-view="data"><div class="metric-top"><span class="metric-icon">${icon(kind)}</span><span class="eyebrow">${esc(label)}</span></div><strong data-counter="${esc(key)}" data-value="${Number(value)}">${Number(value).toLocaleString('es-ES')}</strong><small>${comparison?`${esc(comparison.arrow)} ${comparison.percent===null?'Sin base previa':Math.abs(comparison.percent).toFixed(1)+'%'} <span>vs. ayer a esta hora</span>`:'Datos de laboratorio · sin cargos'}</small></button>`;}
+export function chart(rows,title='Actividad reciente'){
+ const w=600,h=160,max=Math.max(1,...rows.map(r=>Math.max(r.NFC,r.QR))),point=(r,i,k)=>`${24+i*(552/Math.max(1,rows.length-1))},${144-r[k]/max*120}`;
+ const line=k=>rows.map((r,i)=>point(r,i,k)).join(' '),id='gold-'+Math.random().toString(36).slice(2);
+ return `<div class="chart-wrap"><div class="panel-heading"><h2>${esc(title)}</h2><div class="legend"><span>NFC</span><span>QR</span></div></div><svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Actividad NFC y QR separada, ${rows.length} días"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#cfaa60" stop-opacity=".28"./><stop offset="100%" stop-color="#cfaa60" stop-opacity="0"./></linearGradient></defs><path d="M24 24H576M24 64H576M24 104H576M24 144H576" class="grid-line"./><polygon points="24,144 ${line('NFC')} 576,144" fill="url(#${id})"./><polyline points="${line('NFC')}" class="chart-nfc"./><polyline points="${line('QR')}" class="chart-qr"./></svg><div class="chart-labels"><span>${esc(rows[0]?.day.slice(5))}</span><span>Interacciones · fuente sintética canónica</span><span>${esc(rows.at(-1)?.day.slice(5))}</span></div></div>`;
+}
+export function animateCounters(root,previous=new Map()){
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ root.querySelectorAll('[data-counter]').forEach(el=>{const key=el.dataset.counter,value=el.dataset.value,changed=previous.get(key)!==value;previous.set(key,value);if(!changed||reduced)return;const content=el.textContent;el.innerHTML=`<span class="rolling-number" aria-hidden="true">${esc(content)}</span><span class="sr-only">${esc(content)}</span>`;});return previous;
+}
