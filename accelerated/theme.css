@@ -1,0 +1,2 @@
+#deviceCreate,.lab-devices form{display:grid;gap:10px;margin-block:12px}.lab-devices label,#deviceCreate label{display:grid;gap:6px}.lab-devices input,.lab-devices select,#deviceCreate input,#deviceCreate select{width:100%;min-width:0}.lab-result{overflow-wrap:anywhere}.lab-devices .device-id{overflow-wrap:anywhere}.lab-devices .panel{min-width:0}.lab-devices .action-row{gap:8px;flex-wrap:wrap}.lab-devices button{max-width:100%}
+.lab-device-details summary{cursor:pointer;color:#d7be8c;padding-block:10px}.lab-device-details[open]>label{margin-block:10px}
